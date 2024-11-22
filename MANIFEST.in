@@ -1,0 +1,1 @@
+include src/testcontainers_demo_generator/config/*.yaml 

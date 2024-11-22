@@ -1,0 +1,24 @@
+{
+    "name": "Python Dev Container",
+    "build": {
+      "dockerfile": "Dockerfile",
+      "context": ".."
+    },
+    "settings": {
+      "python.pythonPath": "/usr/local/bin/python",
+      "python.linting.pylintEnabled": true,
+      "python.formatting.autopep8Path": "/usr/local/bin/autopep8",
+      "editor.formatOnSave": true
+    },
+    "extensions": [
+      "ms-python.python",
+      "ms-python.vscode-pylance"
+    ],
+    "postCreateCommand": "pip install poetry && poetry config virtualenvs.create false && poetry install --no-root && pip install python-dotenv crewai anthropic",
+    "remoteUser": "vscode",
+    "containerEnv": {
+      "PYTHONPATH": "/workspaces/testcontainers_demo_generator/src:${PYTHONPATH}",
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+    }
+}
+  
