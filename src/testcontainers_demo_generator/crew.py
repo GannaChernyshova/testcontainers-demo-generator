@@ -1,5 +1,5 @@
-from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
+from crewai import Agent, Task, Crew, Process
 import os
 
 
@@ -18,10 +18,6 @@ class TestcontainersDemoGenerator():
         super().__init__()
         self.language = language
         self.services = services
-        self.agent_config = {
-            "model": default_model["model"],
-            "provider": default_model["provider"]
-        }
 
     @agent
     def documentation_researcher(self) -> Agent:
@@ -95,24 +91,8 @@ class TestcontainersDemoGenerator():
     @crew
     def crew(self) -> Crew:
         """Creates the TestcontainersDemoGenerator crew"""
-        project_manager = Agent(
-            role="Project Manager",
-            goal="Create a project plan for implementing Testcontainers demo",
-            backstory="Expert in project planning and technical architecture",
-            allow_delegation=False,
-            **self.agent_config
-        )
-
-        developer = Agent(
-            role="Developer",
-            goal="Implement Testcontainers demo application",
-            backstory="Expert software developer with deep knowledge of Testcontainers",
-            allow_delegation=False,
-            **self.agent_config
-        )
-
         return Crew(
-            agents=[project_manager, developer],
+            agents=self.agents,
             tasks=self.tasks,
             process=Process.sequential,
             verbose=True,
