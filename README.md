@@ -22,7 +22,7 @@ The generator employs three specialized AI agents:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/testcontainers-demo-generator.git
+git clone https://github.com/GannaChernyshova/testcontainers-demo-generator.git
 cd testcontainers-demo-generator
 ```
 
