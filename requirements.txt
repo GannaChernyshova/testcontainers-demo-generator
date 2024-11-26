@@ -1,3 +1,6 @@
+crewai[tools]
 crewai
-anthropic
-python-dotenv 
+python-dotenv
+openai
+beautifulsoup4
+requests 

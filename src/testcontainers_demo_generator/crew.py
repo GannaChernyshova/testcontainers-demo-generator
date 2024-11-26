@@ -1,5 +1,6 @@
 from crewai.project import CrewBase, agent, crew, task
 from crewai import Agent, Task, Crew, Process
+from crewai_tools import CodeDocsSearchTool
 import os
 
 
@@ -14,10 +15,22 @@ class TestcontainersDemoGenerator():
         "provider": os.getenv("MODEL_PROVIDER", "openai")
     }
 
+    # Define documentation tools for each language
+    DOCS_TOOLS = {
+        'java': CodeDocsSearchTool(docs_url='https://java.testcontainers.org'),
+        'csharp': CodeDocsSearchTool(docs_url='https://dotnet.testcontainers.org/'),
+        'go': CodeDocsSearchTool(docs_url='https://golang.testcontainers.org/'),
+        'python': CodeDocsSearchTool(docs_url='https://testcontainers-python.readthedocs.io/en/latest/#'),
+        'node': CodeDocsSearchTool(docs_url='https://node.testcontainers.org/')
+    }
+
     def __init__(self, language='Java', services='PostgreSQL'):
         super().__init__()
-        self.language = language
+        self.language = language.lower()
         self.services = services
+        # Get the appropriate docs tool based on language
+        self.docs_tool = self.DOCS_TOOLS.get(
+            self.language, self.DOCS_TOOLS['java'])
 
     @agent
     def documentation_researcher(self) -> Agent:
@@ -25,7 +38,8 @@ class TestcontainersDemoGenerator():
             config=self.agents_config['documentation_researcher'],
             verbose=True,
             model=self.default_model["model"],
-            provider=self.default_model["provider"]
+            provider=self.default_model["provider"],
+            tools=[self.docs_tool]
         )
 
     @agent
@@ -34,7 +48,8 @@ class TestcontainersDemoGenerator():
             config=self.agents_config['solution_architect'],
             verbose=True,
             model=self.default_model["model"],
-            provider=self.default_model["provider"]
+            provider=self.default_model["provider"],
+            tools=[self.docs_tool]
         )
 
     @agent
@@ -47,7 +62,8 @@ class TestcontainersDemoGenerator():
             config=config,
             verbose=True,
             model=self.default_model["model"],
-            provider=self.default_model["provider"]
+            provider=self.default_model["provider"],
+            tools=[self.docs_tool]
         )
 
     @task

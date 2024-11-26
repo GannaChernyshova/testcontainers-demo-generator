@@ -10,7 +10,8 @@ __pycache__/
 .Python
 *.py[cod]
 *$py.class
-
+db
+demo_implementation.md
 # Poetry
 dist/
 *.egg-info/
