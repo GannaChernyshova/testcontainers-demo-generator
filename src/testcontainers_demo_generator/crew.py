@@ -28,33 +28,34 @@ class TestcontainersDemoGenerator():
         super().__init__()
         self.language = language.lower()
         self.services = services
-        # Get the appropriate docs tool based on language
         self.docs_tool = self.DOCS_TOOLS.get(
             self.language, self.DOCS_TOOLS['java'])
+        self.demo_app_output = None
+        self.research_output = None
+
+    def save_output(self, content: str, filename: str):
+        """Save output to a file"""
+        with open(filename, 'w') as f:
+            f.write(
+                f"# {self.language.upper()} Demo Application with {self.services}\n\n")
+            f.write(content)
+
+    def format_task_config(self, task_name: str) -> dict:
+        """Format task configuration with proper variables"""
+        config = dict(self.tasks_config[task_name])
+        config['description'] = config['description'] % {
+            'language': self.language,
+            'services': self.services
+        }
+        config['expected_output'] = config['expected_output'] % {
+            'language': self.language,
+            'services': self.services
+        } if '%(' in config['expected_output'] else config['expected_output']
+        return config
 
     @agent
-    def documentation_researcher(self) -> Agent:
-        return Agent(
-            config=self.agents_config['documentation_researcher'],
-            verbose=True,
-            model=self.default_model["model"],
-            provider=self.default_model["provider"],
-            tools=[self.docs_tool]
-        )
-
-    @agent
-    def solution_architect(self) -> Agent:
-        return Agent(
-            config=self.agents_config['solution_architect'],
-            verbose=True,
-            model=self.default_model["model"],
-            provider=self.default_model["provider"],
-            tools=[self.docs_tool]
-        )
-
-    @agent
-    def implementation_engineer(self) -> Agent:
-        config = dict(self.agents_config['implementation_engineer'])
+    def demo_developer(self) -> Agent:
+        config = dict(self.agents_config['demo_developer'])
         config['role'] = config['role'] % {'language': self.language}
         config['backstory'] = config['backstory'] % {'language': self.language}
 
@@ -66,50 +67,107 @@ class TestcontainersDemoGenerator():
             tools=[self.docs_tool]
         )
 
-    @task
-    def analyze_requirements(self) -> Task:
-        task_config = dict(self.tasks_config['analyze_requirements'])
-        task_config['description'] = task_config['description'] % {
-            'language': self.language,
-            'services': self.services
-        }
+    @agent
+    def test_engineer(self) -> Agent:
+        config = dict(self.agents_config['test_engineer'])
+        config['role'] = config['role'] % {'language': self.language}
+        config['backstory'] = config['backstory'] % {'language': self.language}
 
-        return Task(
-            description=task_config['description'],
-            expected_output=task_config['expected_output'],
-            agent=self.documentation_researcher()
+        return Agent(
+            config=config,
+            verbose=True,
+            model=self.default_model["model"],
+            provider=self.default_model["provider"],
+            tools=[self.docs_tool]
+        )
+
+    @agent
+    def documentation_specialist(self) -> Agent:
+        return Agent(
+            config=self.agents_config['documentation_specialist'],
+            verbose=True,
+            model=self.default_model["model"],
+            provider=self.default_model["provider"],
+            tools=[self.docs_tool]
         )
 
     @task
-    def design_solution(self) -> Task:
-        task_config = dict(self.tasks_config['design_solution'])
-        task_config['description'] = task_config['description'] % {
-            'language': self.language,
-            'services': self.services
-        }
-
+    def create_demo_app(self) -> Task:
+        config = self.format_task_config('create_demo_app')
         return Task(
-            description=task_config['description'],
-            expected_output=task_config['expected_output'],
-            agent=self.solution_architect()
+            description=config['description'],
+            expected_output=config['expected_output'],
+            agent=self.demo_developer(),
+            context=[],
+            output_file="demo_app.md"
         )
 
     @task
-    def generate_implementation(self) -> Task:
-        task_config = dict(self.tasks_config['generate_implementation'])
+    def research_testcontainers(self) -> Task:
+        config = self.format_task_config('research_testcontainers')
+        return Task(
+            description=config['description'],
+            expected_output=config['expected_output'],
+            agent=self.test_engineer(),
+            context=[
+                f"Demo App Implementation:\n{self.demo_app_output}"] if self.demo_app_output else [],
+            output_file="testcontainers_research.md"
+        )
+
+    @task
+    def implement_tests(self) -> Task:
+        config = self.format_task_config('implement_tests')
+        context = []
+        if self.demo_app_output:
+            context.append(f"Demo App Implementation:\n{self.demo_app_output}")
+        if self.research_output:
+            context.append(f"Testcontainers Research:\n{self.research_output}")
 
         return Task(
-            description=task_config['description'],
-            expected_output=task_config['expected_output'],
-            agent=self.implementation_engineer()
+            description=config['description'],
+            expected_output=config['expected_output'],
+            agent=self.test_engineer(),
+            context=context,
+            output_file="test_demo_app.md"
+        )
+
+    @task
+    def create_documentation(self) -> Task:
+        config = self.format_task_config('create_documentation')
+        context = []
+        if self.demo_app_output:
+            context.append(f"Demo App Implementation:\n{self.demo_app_output}")
+        if self.research_output:
+            context.append(f"Test Implementation:\n{self.research_output}")
+
+        return Task(
+            description=config['description'],
+            expected_output=config['expected_output'],
+            agent=self.documentation_specialist(),
+            context=context,
+            output_file="documentation.md"
         )
 
     @crew
     def crew(self) -> Crew:
         """Creates the TestcontainersDemoGenerator crew"""
-        return Crew(
+        crew = Crew(
             agents=self.agents,
             tasks=self.tasks,
             process=Process.sequential,
             verbose=True,
         )
+
+        # Execute crew and handle task outputs
+        result = crew.kickoff()
+
+        # Store intermediate results and save outputs
+        for task in self.tasks:
+            if hasattr(task, 'output_file'):
+                if task.output_file == "demo_app.md":
+                    self.demo_app_output = task.output
+                elif task.output_file == "testcontainers_research.md":
+                    self.research_output = task.output
+                self.save_output(task.output, task.output_file)
+
+        return result

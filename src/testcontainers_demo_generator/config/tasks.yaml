@@ -1,86 +1,141 @@
-analyze_requirements:
+create_demo_app:
   description: >
-    Analyze requirements for a %(language)s application with Testcontainers tests:
+    Create a complete, runnable demo application in %(language)s that uses %(services)s:
     
-    Application Requirements:
-    - Follow %(language)s best practices
-    - Implement proper business logic
-    - Use appropriate frameworks and patterns
+    REQUIREMENTS:
+    1. Generate ALL necessary project files:
+       - Build configuration (pom.xml, requirements.txt, etc.)
+       - Source code files with proper package structure
+       - Configuration files
+       - README with setup instructions
     
-    Testing Requirements:
-    - Use Testcontainers for %(services)s integration testing
-    - Implement proper test lifecycle management
-    - Follow testing best practices
-  expected_output: >
-    A detailed analysis including:
-    1. Application architecture and patterns
-    2. Framework recommendations
-    3. Testcontainers setup and configuration
-    4. Testing strategy and patterns
-  agent: documentation_researcher
-
-design_solution:
-  description: >
-    Design a %(language)s application with Testcontainers-based tests:
-    
-    Application Design:
-    - Clean architecture following %(language)s best practices
-    - Proper separation of concerns
-    - Well-structured business logic
-    - Appropriate error handling
-    
-    Test Design:
-    - Testcontainers integration with %(services)s
-    - Test data management
-    - Container lifecycle handling
-    - Cleanup strategies
-  expected_output: >
-    A complete design including:
-    1. Application Architecture:
-       - Class diagrams
-       - Component interactions
+    2. Implement complete application code:
+       - Main application logic
+       - Service layer
        - Data models
-       - Service layer design
-    
-    2. Test Architecture:
-       - Testcontainers setup
-       - Test class structure
-       - Data setup patterns
-       - Cleanup strategies
-  agent: solution_architect
-
-generate_implementation:
-  description: >
-    Create a comprehensive implementation with separate application and test code.
-    
-    APPLICATION CODE REQUIREMENTS:
-    1. Follow %(language)s best practices.
-    2. Write code for all required business logic.
-    
-    TEST CODE REQUIREMENTS:
-    1. Use Testcontainers properly following best practices for %(language)
-    2. Setup test data in %(services)s
-    3. Write test implementation code in all test methods.
-    4. Write assertions implementation for valudation of business logic.
-
-  expected_output: >
-    A complete implementation with:
-    
-    1. Application Code:
-       - Clean architecture
-       - Proper dependency injection
+       - %(services)s integration
        - Error handling
        - Logging
-       - Transaction management
     
-    2. Test Code:
-       - Testcontainers setup
-       - Integration tests
-       - Data management
-       - Proper cleanup
+    3. Code must be:
+       - Complete and runnable
+       - Properly formatted
+       - Ready for copy-paste
+       - Free of TODOs or placeholders
     
-    3. NO:
-       - Commented code
-       - TODOs
-       - Placeholder implementations
-  agent: implementation_engineer
+    4. Include ALL required dependencies
+    
+    Generate the complete implementation that can be copied directly to an IDE and run.
+  expected_output: >
+    Complete, runnable project including:
+    1. ALL project files (build files, source code, config)
+    2. FULL implementation of all classes
+    3. Proper package/namespace structure
+    4. Complete dependency list
+    5. Setup instructions
+  agent: demo_developer
+
+research_testcontainers:
+  description: >
+    Research Testcontainers documentation for %(language)s and %(services)s:
+    
+    REQUIREMENTS:
+    1. Study the demo application implementation from previous task
+    2. Research Testcontainers documentation for %(language)s:
+       - Setup and configuration
+       - %(services)s module usage
+       - Lifecycle management
+       - Best practices
+    
+    3. Focus on:
+       - How to integrate Testcontainers with the demo app
+       - Required dependencies
+       - Container configuration for %(services)s
+       - Test data management
+       - Cleanup strategies
+    
+    4. Identify:
+       - Best testing patterns for the demo app
+       - Proper test structure
+       - Required test configuration
+    
+    Use the documentation tool to gather comprehensive information.
+  expected_output: >
+    Detailed analysis including:
+    1. Testcontainers setup requirements
+    2. Integration patterns for %(services)s
+    3. Best practices for test implementation
+    4. Specific testing strategies for the demo app
+  agent: test_engineer
+
+implement_tests:
+  description: >
+    Using the demo application from task 1 and Testcontainers research from task 2,
+    implement complete, runnable tests:
+    
+    REQUIREMENTS:
+    1. Generate complete test implementation:
+       - Test class setup
+       - Testcontainers configuration for %(services)s
+       - Test methods covering demo app functionality
+       - Assertions
+       - Cleanup code
+    
+    2. Include:
+       - ALL necessary test dependencies
+       - FULL container lifecycle management
+       - Complete test data setup
+       - Proper cleanup handling
+    
+    3. Tests must:
+       - Work with the demo app implementation
+       - Be complete and runnable
+       - Be properly formatted
+       - Be ready for copy-paste
+       - Have no TODOs or placeholders
+    
+    Generate complete test code that can be copied directly to an IDE and run.
+  expected_output: >
+    Complete test implementation including:
+    1. FULL test class implementation
+    2. ALL required test dependencies
+    3. Complete container configuration
+    4. Working test methods
+    5. Proper cleanup code
+  agent: test_engineer
+
+create_documentation:
+  description: >
+    Create comprehensive documentation for both the demo application and its tests:
+    
+    REQUIREMENTS:
+    1. Document the demo application:
+       - Architecture and design
+       - Code structure
+       - %(services)s integration
+    
+    2. Document the Testcontainers tests:
+       - Test approach
+       - Container setup
+       - Test data management
+    
+    3. Provide exact setup instructions:
+       - Prerequisites
+       - Dependencies
+       - Configuration steps
+       - Build commands
+    
+    4. Include running instructions:
+       - How to build
+       - How to run the application
+       - How to run the tests
+       - Expected output
+    
+    Documentation should be detailed enough for a developer to set up and run everything without questions.
+  expected_output: >
+    Complete documentation including:
+    1. Demo app documentation
+    2. Test implementation details
+    3. Setup guide
+    4. Running instructions
+  agent: documentation_specialist
