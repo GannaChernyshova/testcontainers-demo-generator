@@ -61,8 +61,7 @@ source .venv/bin/activate  # On Unix/macOS
 
 2. Install dependencies:
 ```bash
-pip install poetry
-poetry install
+pip install -r requirements.txt
 ```
 
 ## Configuration
