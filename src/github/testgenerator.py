@@ -52,7 +52,7 @@ class AITestGenerator:
            - JUnit Jupiter annotations (@Test, @BeforeEach, etc)
            - Testcontainers annotations and classes
            - Spring Boot Test annotations
-           - Spring Boot TestContainers
+           - Spring Boot Testcontainers
            - Your actual domain classes from src/main
            - AssertJ for assertions
         3. For DB tests:
@@ -106,7 +106,7 @@ class AITestGenerator:
         - Cache configurations
         - External API clients
         
-        Return only a Python list of service names that need TestContainers.
+        Return only a Python list of service names that need Testcontainers.
         Example: ["postgresql", "redis", "mongodb"]
         Return empty list if no services found.
         """
@@ -134,7 +134,7 @@ class AITestGenerator:
             return
 
         prompt = f"""
-        Add these TestContainers dependencies to pom.xml for services {services}.
+        Add these Testcontainers dependencies to pom.xml for services {services}.
         Also include:
         1. JUnit Jupiter dependency
         2. Testcontainers JUnit Jupiter dependency
