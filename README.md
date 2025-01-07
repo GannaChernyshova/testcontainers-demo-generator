@@ -74,6 +74,18 @@ pip install -r requirements.txt
 
 ## Usage
 
+### Target Repository Configuration
+
+The target repository URL is defined in `src/github/testgenerator.py`:
+
+```python
+repo_url = "https://github.com/GannaChernyshova/test-gen-demo"
+```
+
+You can modify this URL to generate tests for any other Java repository that you want to experiment with.
+
+### Running the Generator
+
 Run the test generator:
 
 ```bash
@@ -81,7 +93,7 @@ python src/github/testgenerator.py
 ```
 
 The generator will:
-1. Clone the target repository
+1. Clone the target repository (specified in testgenerator.py)
 2. Create a new feature branch
 3. Scan Java source files for:
    - Service dependencies
@@ -147,4 +159,4 @@ For help and questions:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the Apache Software License - see the LICENSE file for details.

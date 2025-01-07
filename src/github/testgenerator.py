@@ -21,7 +21,7 @@ class AITestGenerator:
             os.system(f"rm -rf {self.local_path}")
         self.repo = git.Repo.clone_from(self.repo_url, self.local_path)
 
-    def create_branch(self, branch_name="feature/add-ai-testcontainers-seven"):
+    def create_branch(self, branch_name="feature/add-ai-testcontainers-eight"):
         current = self.repo.create_head(branch_name)
         current.checkout()
 

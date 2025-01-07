@@ -1,6 +1,5 @@
-crewai[tools]
-crewai
 python-dotenv
 openai
 beautifulsoup4
 requests 
+PyGithub 
