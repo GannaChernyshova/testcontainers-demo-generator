@@ -1,21 +1,22 @@
 # Testcontainers Demo Generator
 
-A tool that generates production-quality demo applications showcasing Testcontainers integration testing patterns across different programming languages.
+A tool that generates production-quality Testcontainers integration tests for Java applications using AI assistance.
 
 ## Overview
 
-This project uses AI agents to generate well-structured demo applications that demonstrate how to properly implement integration testing using Testcontainers. Each generated demo follows language-specific best practices and includes comprehensive test coverage.
-
-The generator employs three specialized AI agents:
-- Solution Architect: Designs the application architecture
-- Documentation Researcher: Analyzes best practices and patterns
-- Implementation Engineer: Creates the actual code and tests
+This project uses OpenAI's GPT-4 to analyze Java source code and automatically generate comprehensive Testcontainers integration tests. It can:
+- Analyze Java source files for service dependencies
+- Generate appropriate integration tests
+- Update pom.xml with required Testcontainers dependencies
+- Create a pull request with the generated tests
 
 ## Requirements
 
 - Python 3.11 or higher
 - VS Code with Remote - Containers extension
 - Docker Desktop
+- GitHub Personal Access Token with repo permissions
+- OpenAI API Key
 
 ## Installation
 
@@ -41,6 +42,13 @@ cd testcontainers-demo-generator
    - Select the project directory
    - Wait for the container to build and start
 
+3. After container starts, set up required environment variables:
+   ```bash
+   export OPENAI_API_KEY='your-openai-api-key'
+   export GITHUB_TOKEN='your-github-personal-access-token'
+   ```
+   Note: Make sure your GitHub token has permissions for repo operations (read/write access).
+
 The dev container will automatically:
 - Set up Python 3.11 environment
 - Install all required dependencies
@@ -64,69 +72,91 @@ source .venv/bin/activate  # On Unix/macOS
 pip install -r requirements.txt
 ```
 
-## Configuration
-
-1. Set up your environment:
-   - Copy `.env.example` to `.env`
-   - Add your `ANTHROPIC_API_KEY` to the `.env` file
-   - Add your `OPENAI_API_KEY` to the `.env` file
-
-2. Customize the generation:
-   - Modify `src/testcontainers_demo_generator/config/agents.yaml` to configure the AI agents
-   - Modify `src/testcontainers_demo_generator/config/tasks.yaml` to define generation tasks
-   - Update `src/testcontainers_demo_generator/crew.py` to customize the generation logic
-   - Adjust `src/testcontainers_demo_generator/main.py` for specific input parameters
-
 ## Usage
 
-Run the demo generator:
+### Target Repository Configuration
 
-```bash
-python -m testcontainers_demo_generator.main -l java -s redis
+The target repository URL is defined in `src/github/testgenerator.py`:
+
+```python
+repo_url = "https://github.com/GannaChernyshova/test-gen-demo"
 ```
 
-Parameters:
-- `-l, --language`: Target programming language (e.g., java, python, nodejs)
-- `-s, --service`: Target service to demonstrate (e.g., redis, postgres, mongodb)
+You can modify this URL to generate tests for any other Java repository that you want to experiment with.
 
-This will:
-1. Generate a sample application with Testcontainers integration
-2. Create test cases demonstrating Testcontainers usage
-3. Generate documentation explaining the implementation
-4. Output all files in the `demo_implementation.md` file
+### Running the Generator
 
-## Example Output
+Run the test generator:
 
-The generator creates:
-- A working application with proper dependencies
-- Test classes showing Testcontainers setup
-- Docker configurations if needed
-- README with setup and usage instructions
+```bash
+python src/github/testgenerator.py
+```
 
-## Supported Technologies
+The generator will:
+1. Clone the target repository (specified in testgenerator.py)
+2. Create a new feature branch
+3. Scan Java source files for:
+   - Service dependencies
+   - Database connections
+   - Message queues
+   - Cache configurations
+   - External API clients
+4. Generate integration tests with:
+   - Proper package structure
+   - Required imports
+   - Testcontainers configuration
+   - Test data initialization
+   - Cleanup procedures
+5. Update pom.xml with necessary dependencies
+6. Commit changes and create a pull request
 
-Currently supports generating demos for:
-- Java with JUnit
-- Python with pytest
-- Node.js with Jest
-- (Add more as implemented)
+## Generated Test Features
+
+The generated tests include:
+- Proper package and import statements
+- JUnit Jupiter integration
+- Spring Boot Test configuration
+- Testcontainers setup for detected services
+- Database connection management
+- Test data initialization
+- Resource cleanup
+- Comprehensive assertions
+
+## Supported Services
+
+Currently detects and generates tests for:
+- PostgreSQL databases
+- Redis caches
+- MongoDB databases
+- Message queues
+- External services
+
+## Test Generation Rules
+
+The generator follows these rules:
+1. Maintains original package structure
+2. Uses Testcontainers for all external services
+3. Properly configures Spring Boot test environment
+4. Initializes test data in @BeforeEach
+5. Cleans up resources in @AfterEach
+6. Uses TestRestTemplate for controller tests
+7. Avoids mocking in favor of real service containers
+8. Includes proper assertions and verifications
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit pull requests to add:
-- Support for new languages/frameworks
-- Additional demo scenarios
-- Improvements to existing templates
+- Support for additional services
+- Improved test generation patterns
+- Better dependency detection
 - Documentation enhancements
 
 ## Support
 
 For help and questions:
-- Check our [documentation](https://docs.crewai.com)
 - Visit the [Testcontainers documentation](https://testcontainers.com)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Open an issue](https://github.com/yourusername/testcontainers-demo-generator/issues)
+- [Open an issue](https://github.com/GannaChernyshova/testcontainers-demo-generator/issues)
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the Apache Software License - see the LICENSE file for details.
