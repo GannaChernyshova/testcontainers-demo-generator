@@ -2,6 +2,7 @@ import os
 import git
 from github import Github
 import openai
+import anthropic
 import json
 import re
 from pathlib import Path
@@ -9,12 +10,27 @@ import glob
 
 
 class AITestGenerator:
-    def __init__(self, github_token, openai_key, repo_url):
+    def __init__(self, github_token, openai_key=None, anthropic_key=None, repo_url=None, debug=False):
         self.github_token = github_token
-        self.repo_url = repo_url
+        self.debug = debug
+        # Format repo URL with authentication token
+        if repo_url.startswith('https://'):
+            self.repo_url = repo_url.replace('https://', f'https://{github_token}@')
+        else:
+            self.repo_url = repo_url
         self.g = Github(github_token)
         self.local_path = "temp_repo"
-        openai.api_key = openai_key
+        
+        # Initialize AI clients based on provided keys
+        self.ai_client = None
+        if openai_key:
+            openai.api_key = openai_key
+            self.ai_client = "openai"
+        elif anthropic_key:
+            self.anthropic_client = anthropic.Anthropic(api_key=anthropic_key)
+            self.ai_client = "anthropic"
+        else:
+            raise ValueError("Either OpenAI or Anthropic API key must be provided")
 
     def clone_repo(self):
         if os.path.exists(self.local_path):
@@ -79,17 +95,29 @@ class AITestGenerator:
         Return only Java test class code.
         """
 
-        response = openai.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system",
-                    "content": "Return only Java code with proper package and imports"},
-                {"role": "user", "content": test_prompt}
-            ],
-            temperature=0
-        )
+        if self.ai_client == "openai":
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Return only Java code with proper package and imports"},
+                    {"role": "user", "content": test_prompt}
+                ],
+                temperature=0
+            )
+            test_code = response.choices[0].message.content.strip()
+        else:  # anthropic
+            response = self.anthropic_client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=2000,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": "Return only Java code with proper package and imports.\n\n" + test_prompt
+                    }
+                ]
+            )
+            test_code = response.content[0].text.strip()
 
-        test_code = response.choices[0].message.content.strip()
         return test_code.replace("```java", "").replace("```", "").strip()
 
     def detect_dependencies(self, file_path):
@@ -109,23 +137,61 @@ class AITestGenerator:
         Return only a Python list of service names that need Testcontainers.
         Example: ["postgresql", "redis", "mongodb"]
         Return empty list if no services found.
+        The response must be a valid Python list syntax.
         """
 
         try:
-            response = openai.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "Return only a Python list of strings"},
-                    {"role": "user", "content": f"{prompt}\n\nCode:\n{code}"}
-                ],
-                temperature=0
-            )
+            if self.ai_client == "openai":
+                response = openai.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Return only a Python list of strings"},
+                        {"role": "user", "content": f"{prompt}\n\nCode:\n{code}"}
+                    ],
+                    temperature=0
+                )
+                content = response.choices[0].message.content.strip()
+            else:  # anthropic
+                response = self.anthropic_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=1000,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": "Return only a Python list of strings.\n\n" + f"{prompt}\n\nCode:\n{code}"
+                        }
+                    ]
+                )
+                content = response.content[0].text.strip()
 
-            content = response.choices[0].message.content.strip()
-            deps = eval(content)
-            return deps if isinstance(deps, list) else []
+            if self.debug:
+                print(f"Debug - Raw AI response for {file_path}:")
+                print(content)
+            
+            # Clean up the response to ensure valid Python syntax
+            content = content.replace('```python', '').replace('```', '').strip()
+            if not (content.startswith('[') and content.endswith(']')):
+                if self.debug:
+                    print(f"Warning: Invalid list format received: {content}")
+                return []
+                
+            try:
+                deps = eval(content)
+                if not isinstance(deps, list):
+                    if self.debug:
+                        print(f"Warning: Non-list result evaluated: {deps}")
+                    return []
+                return deps
+            except SyntaxError as se:
+                if self.debug:
+                    print(f"Syntax error in AI response: {se}")
+                    print(f"Problematic content: {content}")
+                return []
+            
         except Exception as e:
-            print(f"Error detecting dependencies: {e}")
+            if self.debug:
+                print(f"Error detecting dependencies for {file_path}: {str(e)}")
+                print(f"File content: {code[:200]}...")  # Print first 200 chars of file
             return []
 
     def update_dependencies(self, services):
@@ -133,35 +199,84 @@ class AITestGenerator:
         if not pom_path.exists():
             return
 
+        # Read existing pom.xml
+        pom_content = pom_path.read_text()
+        
+        # Check which dependencies we need to add
+        needed_deps = set()
+        if "postgresql" in services and "<artifactId>postgresql</artifactId>" not in pom_content:
+            needed_deps.add("postgresql")
+        if "mongodb" in services and "<artifactId>mongodb</artifactId>" not in pom_content:
+            needed_deps.add("mongodb")
+        if "redis" in services and "<artifactId>redis</artifactId>" not in pom_content:
+            needed_deps.add("redis")
+            
+        # If no new dependencies needed, return early
+        if not needed_deps:
+            if self.debug:
+                print("All required dependencies already present in pom.xml")
+            return
+
         prompt = f"""
-        Add these Testcontainers dependencies to pom.xml for services {services}.
-        Also include:
-        1. JUnit Jupiter dependency
-        2. Testcontainers JUnit Jupiter dependency
-        3. Testcontainers BOM
-        4. Spring Boot Test dependency
+        Add ONLY the following Testcontainers dependencies that are missing: {list(needed_deps)}.
+        Include ONLY dependencies that are not already in the pom.xml.
+        Do not include any comments or explanations.
+        Return only the XML dependency elements without any wrapper tags.
+        Each dependency should include groupId, artifactId, version (if needed), and scope (if needed).
         
-        Current pom.xml content:
-        {pom_path.read_text()}
-        
-        Return only the new dependencies XML section.
+        Current pom.xml content for reference:
+        {pom_content}
         """
 
-        response = openai.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}]
-        )
+        try:
+            if self.ai_client == "openai":
+                response = openai.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Return only XML dependency elements without comments or wrapper tags"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0
+                )
+                new_deps = response.choices[0].message.content.strip()
+            else:  # anthropic
+                response = self.anthropic_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=2000,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": "Return only XML dependency elements without comments or wrapper tags.\n\n" + prompt
+                        }
+                    ]
+                )
+                new_deps = response.content[0].text.strip()
 
-        deps = response.choices[0].message.content
-        pom_content = pom_path.read_text()
-        if "<dependencies>" not in pom_content:
-            pom_content = pom_content.replace(
-                "</project>", "<dependencies>\n</dependencies>\n</project>")
-        updated_content = pom_content.replace(
-            "</dependencies>",
-            f"{deps}\n    </dependencies>"
-        )
-        pom_path.write_text(updated_content)
+            # Clean up the response
+            new_deps = new_deps.replace('```xml', '').replace('```', '').strip()
+            
+            # Only proceed if we got valid dependency XML
+            if "<dependency>" not in new_deps:
+                print("No valid dependencies generated")
+                return
+
+            # Find the last </dependencies> tag
+            last_deps_index = pom_content.rindex("</dependencies>")
+            
+            # Insert new dependencies before the closing tag
+            updated_content = (
+                pom_content[:last_deps_index] +
+                "        " + new_deps + "\n    " +
+                pom_content[last_deps_index:]
+            )
+            
+            # Write updated content back to file
+            pom_path.write_text(updated_content)
+            print(f"Added new dependencies: {needed_deps}")
+            
+        except Exception as e:
+            print(f"Error updating dependencies: {e}")
+            print("Continuing without updating dependencies")
 
     def generate_tests(self):
         java_files = glob.glob(
@@ -169,14 +284,23 @@ class AITestGenerator:
         test_dir = f"{self.local_path}/src/test/java"
         os.makedirs(test_dir, exist_ok=True)
 
+        print(f"Found {len(java_files)} Java files to process")
+        
         for java_file in java_files:
             if "package-info.java" in java_file or "module-info.java" in java_file:
                 continue
 
+            if self.debug:
+                print(f"\nProcessing file: {java_file}")
             try:
                 test_content = self.analyze_code(java_file)
                 if test_content:
+                    if self.debug:
+                        print(f"Generated test content for {java_file}")
                     dependencies = self.detect_dependencies(java_file)
+                    if self.debug:
+                        print(f"Detected dependencies: {dependencies}")
+                    
                     relative_path = os.path.relpath(
                         java_file, f"{self.local_path}/src/main/java")
                     test_file = os.path.join(test_dir, relative_path.replace(
@@ -185,32 +309,60 @@ class AITestGenerator:
                     os.makedirs(os.path.dirname(test_file), exist_ok=True)
                     with open(test_file, 'w') as f:
                         f.write(test_content)
+                    print(f"Created test file: {test_file}")
 
                     if dependencies:
+                        if self.debug:
+                            print(f"Updating dependencies for: {dependencies}")
                         self.update_dependencies(dependencies)
+                elif self.debug:
+                    print(f"No test content generated for {java_file}")
             except Exception as e:
-                print(f"Error processing file {java_file}: {str(e)}")
+                if self.debug:
+                    print(f"Error processing file {java_file}: {str(e)}")
+                    print(f"Stack trace:", exc_info=True)
+                else:
+                    print(f"Error processing {os.path.basename(java_file)}")
 
     def commit_and_push(self):
-        self.repo.index.add('*')
-        self.repo.index.commit(
-            "Add AI-generated Testcontainers integration tests")
-        current = self.repo.active_branch
-        origin = self.repo.remote('origin')
-        origin.push(
-            refspec=f'{current.name}:{current.name}', set_upstream=True)
+        try:
+            self.repo.index.add('*')
+            self.repo.index.commit("Add AI-generated Testcontainers integration tests")
+            current = self.repo.active_branch
+            origin = self.repo.remote('origin')
+            
+            # Configure git to use credentials
+            with self.repo.config_writer() as git_config:
+                git_config.set_value('http', 'postBuffer', '524288000')
+                
+            # Push with token authentication
+            origin.push(refspec=f'{current.name}:{current.name}', force=True)
+        except Exception as e:
+            print(f"Error committing and pushing: {e}")
 
 
 def main():
     github_token = os.getenv("GITHUB_TOKEN")
     openai_key = os.getenv("OPENAI_API_KEY")
-    repo_url = "https://github.com/GannaChernyshova/test-gen-demo"
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    repo_url = os.getenv("REPO_URL")
+    debug_mode = os.getenv("DEBUG", "false").lower() == "true"
 
-    if not all([github_token, openai_key, repo_url]):
-        raise ValueError(
-            "Missing required environment variables: GITHUB_TOKEN, OPENAI_API_KEY, REPO_URL")
+    if not github_token:
+        raise ValueError("Missing required environment variable: GITHUB_TOKEN")
+    
+    if not repo_url:
+        raise ValueError("Missing required environment variable: REPO_URL")
+    
+    if not (openai_key or anthropic_key):
+        raise ValueError("Either OPENAI_API_KEY or ANTHROPIC_API_KEY must be provided")
 
-    generator = AITestGenerator(github_token, openai_key, repo_url)
+    # Prioritize Anthropic if both keys are present
+    if anthropic_key:
+        generator = AITestGenerator(github_token, anthropic_key=anthropic_key, repo_url=repo_url, debug=debug_mode)
+    else:
+        generator = AITestGenerator(github_token, openai_key=openai_key, repo_url=repo_url, debug=debug_mode)
+
     generator.clone_repo()
     generator.create_branch()
     generator.generate_tests()
