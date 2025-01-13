@@ -4,7 +4,7 @@ A tool that generates production-quality Testcontainers integration tests for Ja
 
 ## Overview
 
-This project uses OpenAI's GPT-4 to analyze Java source code and automatically generate comprehensive Testcontainers integration tests. It can:
+This project uses AI (OpenAI's GPT-4o or Anthropic's Claude-3.5-sonnet) to analyze Java source code and automatically generate comprehensive Testcontainers integration tests. It can:
 - Analyze Java source files for service dependencies
 - Generate appropriate integration tests
 - Update pom.xml with required Testcontainers dependencies
@@ -16,7 +16,7 @@ This project uses OpenAI's GPT-4 to analyze Java source code and automatically g
 - VS Code with Remote - Containers extension
 - Docker Desktop
 - GitHub Personal Access Token with repo permissions
-- OpenAI API Key
+- OpenAI API Key or Anthropic API Key
 
 ## Installation
 
@@ -44,33 +44,18 @@ cd testcontainers-demo-generator
 
 3. After container starts, set up required environment variables:
    ```bash
-   export OPENAI_API_KEY='your-openai-api-key'
+   # Required:
    export GITHUB_TOKEN='your-github-personal-access-token'
+   export REPO_URL='https://github.com/user/repo-to-generate-tests-for'
+   
+   # Choose one of:
+   export OPENAI_API_KEY='your-openai-api-key'
+   # OR
+   export ANTHROPIC_API_KEY='your-anthropic-api-key'
+   
+   # Optional:
+   export DEBUG='true'  # Enable verbose debug output
    ```
-   Note: Make sure your GitHub token has permissions for repo operations (read/write access).
-
-The dev container will automatically:
-- Set up Python 3.11 environment
-- Install all required dependencies
-- Configure Python path and extensions
-- Set up the development environment
-
-### Manual Setup (Alternative)
-
-If you prefer not to use dev containers:
-
-1. Create and activate a virtual environment:
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate     # On Windows
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
 
 ## Usage
 
@@ -90,6 +75,24 @@ Run the test generator:
 
 ```bash
 python src/github/testgenerator.py
+```
+
+### Debug Mode
+
+You can enable debug mode to see detailed output about the test generation process:
+- AI responses
+- File processing details
+- Dependency detection
+- Error details and stack traces
+
+To enable debug mode, set the DEBUG environment variable:
+```bash
+export DEBUG=true
+```
+
+Or run with debug mode for a single execution:
+```bash
+DEBUG=true python src/github/testgenerator.py
 ```
 
 The generator will:

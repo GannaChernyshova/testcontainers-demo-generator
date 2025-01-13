@@ -1,5 +1,7 @@
 python-dotenv
 openai
+anthropic
 beautifulsoup4
-requests 
+requests
+GitPython
 PyGithub 
